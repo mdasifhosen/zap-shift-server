@@ -35,18 +35,23 @@ async function run() {
 
     // parcel api
 
-
     // get all parcels
+    // get parcels by sender email
     app.get("/parcels", async (req, res) => {
-      const query = {}  
-      const { email } = req.query
-      
-      if (email) {
-        query.senderEmail=email
+      try {
+        const { email } = req.query;
+
+        const query = email ? { SenderEmail: email } : {};
+
+        const result = await parcelsCollection.find(query).toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({
+          message: "Failed to get parcels",
+        });
       }
-      const cursor=parcelsCollection.find(query)
-      const result = await cursor.toArray();
-      res.send(result);
     });
 
     // save parcel
