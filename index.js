@@ -7,7 +7,7 @@ const cors = require("cors");
 const app = express();
 require("dotenv").config();
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 3000;
 
@@ -42,8 +42,9 @@ async function run() {
         const { email } = req.query;
 
         const query = email ? { SenderEmail: email } : {};
+        const options={sort:{createdAt:-1}}
 
-        const result = await parcelsCollection.find(query).toArray();
+        const result = await parcelsCollection.find(query,options).toArray();
 
         res.send(result);
       } catch (error) {
@@ -54,10 +55,18 @@ async function run() {
       }
     });
 
+    app.get('/parcels/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await parcelsCollection.findOne(query)
+      res.send(result)
+    })
+
     // save parcel
     app.post("/parcels", async (req, res) => {
       try {
         const parcel = req.body;
+        parcel.createdAt=new Date()
         const result = await parcelsCollection.insertOne(parcel);
         res.send(result);
       } catch (error) {
@@ -65,6 +74,13 @@ async function run() {
         res.status(500).send({ message: "Failed to save parcel" });
       }
     });
+
+    app.delete('/parcels/:id',async (req,res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId((id)) }
+      const result = await parcelsCollection.deleteOne(query)
+      res.send(result)
+    })
 
     await client.db("admin").command({ ping: 1 });
 
