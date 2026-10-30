@@ -6,6 +6,7 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -55,12 +56,16 @@ async function run() {
       }
     });
 
-    app.get('/parcels/:id', async (req, res) => {
-      const id = req.params.id
-      const query = { _id: new ObjectId(id) }
-      const result = await parcelsCollection.findOne(query)
-      res.send(result)
-    })
+    app.get("/parcels/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const result = await parcelsCollection.findOne(query);
+
+      console.log(result);
+
+      res.send(result);
+    });
 
     // save parcel
     app.post("/parcels", async (req, res) => {
@@ -81,6 +86,46 @@ async function run() {
       const result = await parcelsCollection.deleteOne(query)
       res.send(result)
     })
+
+    // payment related apis
+    app.post('/payment-checkout-session', async (req, res) => {
+      const paymentInfo=req.body
+    })
+
+    // old
+    app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body
+      const amount=parseInt(paymentInfo.cost)*100
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: 'USD',
+              unit_amount:amount,
+              product_data: {
+                name:paymentInfo.parcelName
+              }
+            },
+
+            quantity: 1,
+          },
+        ],
+        customer_email: paymentInfo.senderEmail,
+        mode: "payment",
+        metadata: {
+          parcelId:paymentInfo.parcelId
+        },
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
+      
+      });
+      console.log(session)
+      res.send({ url: session.url })
+
+  
+})
+ 
+
 
     await client.db("admin").command({ ping: 1 });
 
